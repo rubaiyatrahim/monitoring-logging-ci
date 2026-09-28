@@ -154,6 +154,42 @@ sudo systemctl status prometheus
 
 Screenshot Requirements: `Open http://<SERVER_IP>:9090/targets`. Take a screenshot showing Node Exporter as UP. Take another screenshot of the query page showing a metric (e.g., node_cpu_seconds_total).
 
+### 3. Grafana Setup
+
+#### 3.1. Install Grafana Manually:
+
+```Bash
+sudo apt-get install -y apt-transport-https wget gnupg
+sudo mkdir -p /etc/apt/keyrings
+sudo wget -O /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg-full.key
+sudo chmod 644 /etc/apt/keyrings/grafana.asc
+echo "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+sudo apt-get update
+sudo apt-get install grafana
+```
+
+#### 3.2. Start Service:
+
+```Bash
+sudo systemctl start grafana-server
+sudo systemctl enable --now grafana-server
+sudo systemctl status grafana-server
+```
+
+#### 3.3. Add Inbound Rule to Allow Port 3000 from Anywhere
+
+![Inbound Rule to Allow Port 3000 from Anywhere](image-7.png)
+
+#### 3.4. Configure Datasource and Dashboard:
+
+##### 3.4.1. Open `http://<SERVER_IP>:3000` (Default login: admin / admin).
+
+##### 3.4.2. Go to Connections > Data Sources > Add data source -> Select Prometheus.
+
+##### 3.4.3. Set URL to `http://localhost:9090`, then click Save & Test. (Take a screenshot).
+
+##### 3.4.4. Go to Dashboards > New > Import dashboard. Use Dashboard ID 1860 (Node Exporter Full) to instantly get CPU, RAM, Disk, and Network metrics.
+
 ## CI Pipeline Explanation
 
 The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, checks out the code, simulates a build step, runs tests, and archives the resulting `/dist` folder using `actions/upload-artifact`.
@@ -177,8 +213,17 @@ The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, c
 
 ### 3. Grafana
 
-_(Insert Prometheus Datasource connected screenshot)_
-_(Insert Dashboard screenshot)_
+#### Grafana Login Page:
+
+![Grafana login page](image-8.png)
+
+#### Prometheus Datasource Connected:
+
+![Prometheus Datasource connected](image-9.png)
+
+#### Dashboard:
+
+![Dashboard](image-10.png)
 
 ### 4. Loki
 
