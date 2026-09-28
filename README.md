@@ -465,10 +465,12 @@ The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, c
 #### Workflow Succeeded:
 
 ![Workflow success](screenshots/image-18.png)
+![Workflow succeeded](screenshots/image-22.png)
 
 #### Artifact Generated:
 
 ![Artifact generated](screenshots/image-19.png)
+![Artifact download link](screenshots/image-21.png)
 
 ## Result/Conclusion
 
