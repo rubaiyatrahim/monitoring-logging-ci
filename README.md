@@ -10,7 +10,17 @@ This project provisions a DevOps environment on an Ubuntu server, utilizing Prom
 
 ## Architecture Diagram
 
-_(Insert diagram image here)_
+![Architecture Diagram](screenshots/image-20.png)
+
+**The Core Machine:** Your entire stack is hosted on one AWS Ubuntu EC2 instance. All the services communicate with each other internally using localhost (127.0.0.1).
+
+**Monitoring Flow:** Node Exporter acts as a sensor, reading OS-level metrics like CPU and RAM. Prometheus is the database engine that reaches out to Node Exporter every 15 seconds to pull those metrics in and store them.
+
+**Logging Flow:** Promtail acts as an agent that constantly tails your server's log files. Unlike Prometheus (which pulls), Promtail pushes these logs into Loki, which stores them efficiently.
+
+**Visualization:** Grafana sits on top of both Prometheus and Loki. When you log into port 3000, Grafana translates the raw data from both databases into human-readable graphs and log streams.
+
+**CI Pipeline:** The GitHub Actions runner runs independently as a background service. It constantly reaches out to GitHub asking "Are there any jobs for me?" When you push code, GitHub says yes, and the runner executes your build and test steps directly on the EC2 instance's hardware.
 
 ## Installation Steps & Configuration
 
@@ -444,10 +454,21 @@ The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, c
 
 ### 5. GitHub Actions
 
+#### Self-hosted Runner State:
+
 ![Self-hosted runner state](screenshots/image-16.png)
-_(Insert Self-hosted runner Online screenshot)_
-_(Insert Workflow successful screenshot)_
-_(Insert Artifact generated screenshot)_
+
+#### Workflow Running:
+
+![Workflow running](screenshots/image-17.png)
+
+#### Workflow Succeeded:
+
+![Workflow success](screenshots/image-18.png)
+
+#### Artifact Generated:
+
+![Artifact generated](screenshots/image-19.png)
 
 ## Result/Conclusion
 
