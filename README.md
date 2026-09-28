@@ -315,6 +315,87 @@ sudo systemctl status promtail
 
 ##### 4.5.3. Go to Explore (compass icon), select Loki, run a query like {job="varlogs"}, and click "Run Query". (Take a screenshot).
 
+### 5. GitHub Actions CI
+
+#### 5.1. Configure Self-Hosted Runner:
+
+##### 5.1.1. Go to your GitHub Repository > Settings > Actions > Runners.
+
+##### 5.1.2. Click New self-hosted runner. Select Linux, x64.
+
+##### 5.1.3. SSH into your Ubuntu server and run the exact download/configure commands GitHub provides.
+
+_Download_
+
+```Bash
+# Create a folder
+mkdir actions-runner && cd actions-runner# Download the latest runner package
+curl -o actions-runner-linux-x64-2.337.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.337.0/actions-runner-linux-x64-2.337.0.tar.gz# Optional: Validate the hash
+echo "70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613  actions-runner-linux-x64-2.337.0.tar.gz" | shasum -a 256 -c# Extract the installer
+tar xzf ./actions-runner-linux-x64-2.337.0.tar.gz
+```
+
+_Configure_
+
+```Bash
+# Create the runner and start the configuration experience
+./config.sh --url https://github.com/rubaiyatrahim/monitoring-logging-ci --token ADERNOHZJZZWBBJPSJK4MODKXKTJ2# Last step, run it!
+./run.sh
+```
+
+_Using your self-hosted runner_
+
+```Bash
+# Use this YAML in your workflow file for each job
+runs-on: self-hosted
+```
+
+##### 5.1.4. Run `sudo ./svc.sh install` and `sudo ./svc.sh start` to run it as a background service.
+
+##### 5.1.5. Take a screenshot of the runner showing "Idle" in GitHub.
+
+#### 5.2. Create CI Workflow File:
+
+In your local repository, create the ci pipeline file .github/workflows/ci-pipeline.yml with the following content:
+
+```YAML
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (Example Environment)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Application
+        run: |
+          echo "Building application..."
+          mkdir -p dist
+          echo "Build complete." > dist/build.txt
+
+      - name: Test Application
+        run: |
+          echo "Running tests..."
+          echo "All tests passed."
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: dist/
+```
+
 ## CI Pipeline Explanation
 
 The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, checks out the code, simulates a build step, runs tests, and archives the resulting `/dist` folder using `actions/upload-artifact`.
@@ -363,6 +444,7 @@ The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, c
 
 ### 5. GitHub Actions
 
+![Self-hosted runner state](screenshots/image-16.png)
 _(Insert Self-hosted runner Online screenshot)_
 _(Insert Workflow successful screenshot)_
 _(Insert Artifact generated screenshot)_
