@@ -15,7 +15,7 @@ _(Insert diagram image here)_
 ## Installation Steps & Configuration
 
 At first, created a new EC2 instance as follows:<br/>
-![EC2 instance](image.png)
+![EC2 instance](screenshots/image.png)
 
 <br />Then the following steps were taken.<br />
 
@@ -68,7 +68,7 @@ sudo systemctl status node_exporter
 
 #### 1.5. Add Inbound Rule to Allow Port 9100 from Anywhere
 
-![Allow Port 9100 Inbound from Anywhere](image-1.png)
+![Allow Port 9100 Inbound from Anywhere](screenshots/image-1.png)
 
 Screenshot Requirement: Open `http://<SERVER_IP>:9100/metrics` in your browser. Take a screenshot showing the exposed metrics.
 
@@ -150,7 +150,7 @@ sudo systemctl status prometheus
 
 #### 2.6. Add Inbound Rule to Allow Port 9090 from Anywhere
 
-![Inbound Rule to Allow Port 9090 from Anywhere](image-3.png)
+![Inbound Rule to Allow Port 9090 from Anywhere](screenshots/image-3.png)
 
 Screenshot Requirements: `Open http://<SERVER_IP>:9090/targets`. Take a screenshot showing Node Exporter as UP. Take another screenshot of the query page showing a metric (e.g., node_cpu_seconds_total).
 
@@ -178,7 +178,7 @@ sudo systemctl status grafana-server
 
 #### 3.3. Add Inbound Rule to Allow Port 3000 from Anywhere
 
-![Inbound Rule to Allow Port 3000 from Anywhere](image-7.png)
+![Inbound Rule to Allow Port 3000 from Anywhere](screenshots/image-7.png)
 
 #### 3.4. Configure Datasource and Dashboard:
 
@@ -190,6 +190,131 @@ sudo systemctl status grafana-server
 
 ##### 3.4.4. Go to Dashboards > New > Import dashboard. Use Dashboard ID 1860 (Node Exporter Full) to instantly get CPU, RAM, Disk, and Network metrics.
 
+### 4. Loki & Logging
+
+Loki stores the logs, but `promtail` is required to scrape your server logs and send them to Loki.
+
+#### 4.1. Install Loki:
+
+```Bash
+curl -O -L "https://github.com/grafana/loki/releases/download/v2.9.4/loki-linux-amd64.zip"
+unzip loki-linux-amd64.zip
+sudo mv loki-linux-amd64 /usr/local/bin/loki
+sudo mkdir -p /etc/loki
+```
+
+Create the loki config file: `sudo nano /etc/loki/loki-config.yaml`:
+
+```YAML
+auth_enabled: false
+server:
+  http_listen_port: 3100
+common:
+  path_prefix: /tmp/loki
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks
+      rules_directory: /tmp/loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+```
+
+#### 4.2. Install Promtail:
+
+```Bash
+curl -O -L "https://github.com/grafana/loki/releases/download/v2.9.4/promtail-linux-amd64.zip"
+unzip promtail-linux-amd64.zip
+sudo mv promtail-linux-amd64 /usr/local/bin/promtail
+sudo mkdir -p /etc/promtail
+```
+
+Create the promtail config file: `sudo nano /etc/promtail/promtail-config.yaml`:
+
+```YAML
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+positions:
+  filename: /tmp/positions.yaml
+clients:
+  - url: http://localhost:3100/loki/api/v1/push
+scrape_configs:
+  - job_name: system
+    static_configs:
+    - targets:
+        - localhost
+      labels:
+        job: varlogs
+        __path__: /var/log/*log
+```
+
+#### 4.3. Create Systemd Services for Loki & Promtail:
+
+Create the loki service: `sudo nano /etc/systemd/system/loki.service`:
+
+```Ini, TOML
+[Unit]
+Description=Loki service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/loki -config.file /etc/loki/loki-config.yaml
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Create the promtail service: `sudo nano /etc/systemd/system/promtail.service`:
+
+```Ini, TOML
+[Unit]
+Description=Promtail service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/promtail -config.file /etc/promtail/promtail-config.yaml
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start services:
+
+```Bash
+sudo systemctl daemon-reload
+sudo systemctl start loki promtail
+sudo systemctl enable --now loki promtail
+sudo systemctl status loki
+sudo systemctl status promtail
+```
+
+#### 4.4. Add Inbound Rules to Allow Port 3100 and 9080 from Anywhere
+
+![Allow 3100 from Anywhere](screenshots/image-11.png)
+![Allow 9080 from Anywhere](screenshots/image-12.png)
+
+#### 4.5. Verify in Grafana
+
+##### 4.5.1. In Grafana, go to Connections > Data Sources > Add data source -> Select Loki.
+
+##### 4.5.2. Set URL to `http://localhost:3100`. Click Save & Test. (Take a screenshot).
+
+##### 4.5.3. Go to Explore (compass icon), select Loki, run a query like {job="varlogs"}, and click "Run Query". (Take a screenshot).
+
 ## CI Pipeline Explanation
 
 The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, checks out the code, simulates a build step, runs tests, and archives the resulting `/dist` folder using `actions/upload-artifact`.
@@ -198,37 +323,43 @@ The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, c
 
 ### 1. Prometheus
 
-#### Targe UP:
+#### Target UP:
 
-![Target UP](image-4.png)
+![Target UP](screenshots/image-4.png)
 
 #### Metrics Page:
 
-![Metrics Page with address bar](image-6.png)
-![Metrics Page Full](image-5.png)
+![Metrics Page with address bar](screenshots/image-6.png)
+![Metrics Page Full](screenshots/image-5.png)
 
 ### 2. Node Exporter
 
-![Node Exporter /metrics page showing collected system metrics.](image-2.png)
+![Node Exporter /metrics page showing collected system metrics.](screenshots/image-2.png)
 
 ### 3. Grafana
 
 #### Grafana Login Page:
 
-![Grafana login page](image-8.png)
+![Grafana login page](screenshots/image-8.png)
 
 #### Prometheus Datasource Connected:
 
-![Prometheus Datasource connected](image-9.png)
+![Prometheus Datasource connected](screenshots/image-9.png)
 
 #### Dashboard:
 
-![Dashboard](image-10.png)
+![Dashboard](screenshots/image-10.png)
 
 ### 4. Loki
 
-_(Insert Loki Datasource connected screenshot)_
-_(Insert Explore page logs screenshot)_
+#### Loki Datasource Connected:
+
+![Loki Datasource Connected](screenshots/image-13.png)
+
+#### Explore page Logs:
+
+![Explore page Logs 1](screenshots/image-15.png)
+![Explore page Logs 2](screenshots/image-14.png)
 
 ### 5. GitHub Actions
 
