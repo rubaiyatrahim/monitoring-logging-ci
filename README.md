@@ -1,6 +1,6 @@
 # Server Monitoring, Logging & CI Pipeline
 
-**Student Name:** [Your Name]  
+**Student Name:** Md. Rubaiyat Rahim
 **Batch:** DevOps Batch 14  
 **Assignment Title:** Server Monitoring, Logging & CI Pipeline
 
@@ -14,7 +14,63 @@ _(Insert diagram image here)_
 
 ## Installation Steps & Configuration
 
-_(Briefly summarize the commands and file paths you used above)_
+At first, created a new EC2 instance as follows:<br/>
+![EC2 instance](image.png)
+
+<br />Then the following steps were taken.<br />
+
+### 1. Node Exporter Setup
+
+Node Exporter collects system-level metrics (CPU, RAM, Disk, Network) and exposes them on port 9100.
+
+#### 1.1. Download and Extract Binary:
+
+```bash
+wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
+tar xvfz node_exporter-1.7.0.linux-amd64.tar.gz
+sudo mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
+rm -rf node_exporter-1.7.0.linux-amd64\*
+```
+
+#### 1.2. Create System User:
+
+```bash
+sudo useradd --no-create-home --shell /bin/false node_exporter
+```
+
+#### 1.3. Configure Systemd Service:
+
+Create a service file: `sudo nano /etc/systemd/system/node_exporter.service`
+
+```Ini, TOML
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### 1.4. Start and Verify:
+
+```Bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now node_exporter
+sudo systemctl start node_exporter
+sudo systemctl status node_exporter
+```
+
+#### 1.5. Add Inbound Rule to Allow Port 9100 from Anywhere
+
+![Allow Port 9100 Inbound from Anywhere](image-1.png)
+
+Screenshot Requirement: Open `http://<SERVER_IP>:9100/metrics` in your browser. Take a screenshot showing the exposed metrics.
 
 ## CI Pipeline Explanation
 
@@ -29,7 +85,7 @@ _(Insert metrics page screenshot)_
 
 ### 2. Node Exporter
 
-_(Insert /metrics browser screenshot)_
+![Node Exporter /metrics page showing collected system metrics.](image-2.png)
 
 ### 3. Grafana
 
