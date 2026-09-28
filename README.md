@@ -25,7 +25,7 @@ Node Exporter collects system-level metrics (CPU, RAM, Disk, Network) and expose
 
 #### 1.1. Download and Extract Binary:
 
-```bash
+```Bash
 wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
 tar xvfz node_exporter-1.7.0.linux-amd64.tar.gz
 sudo mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
@@ -34,7 +34,7 @@ rm -rf node_exporter-1.7.0.linux-amd64\*
 
 #### 1.2. Create System User:
 
-```bash
+```Bash
 sudo useradd --no-create-home --shell /bin/false node_exporter
 ```
 
@@ -72,6 +72,88 @@ sudo systemctl status node_exporter
 
 Screenshot Requirement: Open `http://<SERVER_IP>:9100/metrics` in your browser. Take a screenshot showing the exposed metrics.
 
+### 2. Prometheus Setup
+
+Prometheus pulls the metrics exposed by Node Exporter.
+
+#### 2.1. Download and Extract Binary:
+
+```Bash
+wget https://github.com/prometheus/prometheus/releases/download/v2.49.1/prometheus-2.49.1.linux-amd64.tar.gz
+tar xvfz prometheus-2.49.1.linux-amd64.tar.gz
+sudo mv prometheus-2.49.1.linux-amd64/prometheus /usr/local/bin/
+sudo mv prometheus-2.49.1.linux-amd64/promtool /usr/local/bin/
+```
+
+#### 2.2. Configure Directories and User:
+
+```Bash
+sudo useradd --no-create-home --shell /bin/false prometheus
+sudo mkdir /etc/prometheus /var/lib/prometheus
+sudo mv prometheus-2.49.1.linux-amd64/consoles /etc/prometheus/
+sudo mv prometheus-2.49.1.linux-amd64/console_libraries /etc/prometheus/
+sudo chown -R prometheus:prometheus /etc/prometheus /var/lib/prometheus
+```
+
+#### 2.3. Configure prometheus.yml:
+
+Create the config file: `sudo nano /etc/prometheus/prometheus.yml`
+
+```YAML
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+```
+
+Change the ownership of this file: `sudo chown prometheus:prometheus /etc/prometheus/prometheus.yml`
+
+#### 2.4. Configure Systemd Service:
+
+Create a service file: `sudo nano /etc/systemd/system/prometheus.service`
+
+```Ini, TOML
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+    --config.file /etc/prometheus/prometheus.yml \
+    --storage.tsdb.path /var/lib/prometheus/ \
+    --web.console.templates=/etc/prometheus/consoles \
+    --web.console.libraries=/etc/prometheus/console_libraries
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### 2.5. Start and Verify:
+
+```Bash
+sudo systemctl daemon-reload
+sudo systemctl start prometheus
+sudo systemctl enable --now prometheus
+sudo systemctl status prometheus
+```
+
+#### 2.6. Add Inbound Rule to Allow Port 9090 from Anywhere
+
+![Inbound Rule to Allow Port 9090 from Anywhere](image-3.png)
+
+Screenshot Requirements: `Open http://<SERVER_IP>:9090/targets`. Take a screenshot showing Node Exporter as UP. Take another screenshot of the query page showing a metric (e.g., node_cpu_seconds_total).
+
 ## CI Pipeline Explanation
 
 The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, checks out the code, simulates a build step, runs tests, and archives the resulting `/dist` folder using `actions/upload-artifact`.
@@ -80,8 +162,14 @@ The CI pipeline runs on a self-hosted runner. It triggers on a push to `main`, c
 
 ### 1. Prometheus
 
-_(Insert Target UP screenshot)_
-_(Insert metrics page screenshot)_
+#### Targe UP:
+
+![Target UP](image-4.png)
+
+#### Metrics Page:
+
+![Metrics Page with address bar](image-6.png)
+![Metrics Page Full](image-5.png)
 
 ### 2. Node Exporter
 
